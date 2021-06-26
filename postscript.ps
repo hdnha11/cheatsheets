@@ -1,0 +1,215 @@
+%!PS
+
+% This is a comment
+
+% Ghostscript is an PostScript interpreter
+% gs postscript.ps
+
+% Evince is a document viewer supporting PostScript
+% evince postscript.ps
+
+% PostScript to PDF
+% ps2pdf postscript.ps
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% The Stack
+
+% PostScript uses stack to store programs and data
+
+1 2 3 4 % push four elements into the stack (FILO)
+pstack  % print the content of the stack
+count   % push the number of things in the stack into the stack
+pop     % pop the item off the stack and throw it away
+=       % (==) pop the item off the stack and print it out
+clear   % delete everything from the stack
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Basic Arithmetic
+
+% PostScript uses reverse Polish (postfix) notation syntax
+
+5 4 add         % 9
+=               % pop the top item off the stack and print
+6 7 mul =       % 42
+1360 23 sub =   % 1337
+12 12 div =     % 1.0
+13 2 mod =      % 1
+99 neg =        % -99
+-99 abs =       % 99
+52 23 max =     % 52
+52 23 min =     % 23
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Stack Manipulation
+
+3 dup                       % duplicate the top item
+2 5 exch                    % swap the top with the second element
+1 2 3 4 5 2 copy            % copy two (the parameter) items (the top and the second)
+1 2 3 4 5 3 index           % copy 4th item to the top of the stack (zero-based, the parameter is 3)
+1 2 3 4 5 6 7 8 9 4 1 roll  % roll the top four items one time
+1 2 3 4 5 6 7 8 9 4 -1 roll % roll the top four items one time in the other direction
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Variables
+
+% A name must be escaped with a slash
+
+/x              % push name x into the stack
+/x 7 def        % bind x to 7 with def function
+x x mul 9 add = % x*x+9=58, x without a slash is a value of x
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Procedures
+
+% Code fragments are enclosed in curly braces { ... }
+
+{}  % push an empty code fragment into the stack
+
+/xplus1 { x 1 add } def % a function that return x + 1
+xplus1 =                % 8
+
+/incx { /x x 1 add def } def    % a function that increase x by one
+incx x =                        % 8
+
+% function uses items from the stack as parameters
+
+/square { dup mul } def % function that return the square of the top item
+3 square =              % 9
+
+% recursive function
+
+/fac { dup 0 eq { pop 1 } { dup 1 sub fac mul } ifelse } def
+7 fac = % 5040
+
+% A fiducial-drawing procedure
+% stack: x y --> -
+/fiducial {
+    newpath            % x y
+    2 copy             % x y x y   grab extra copy for arc
+    10 0 360 arc       % x y       draw a circle at x,y
+    moveto             % -         move to x,y
+    0 -20 rmoveto      % -         move to bottom of vertical line
+    0 40 rlineto       % -         vertical crosshair
+    -20 -20 rmoveto    % -         move to left end of horizontal crosshair
+    40 0 rlineto       % -         horizontal crosshair
+    2 setlinewidth     % -         normally would want to use .1 here!
+    stroke             % -
+} def
+
+0 setgray
+100 200 fiducial
+1 0 0 setrgbcolor
+200 200 fiducial
+
+showpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Text Strings
+
+% Text strings are surrounding by parentheses
+
+/message (Hello World!) def
+
+7 1 string cvs  % convert 7 to string (1 character)
+42 2 string cvs % convert 42 to string (2 characters)
+
+/fontheight 40 def
+/leading fontheight 10 add def
+/posny 735 def       % Y axis baseline position of the next line of text
+/posnx 25 def        % X axis position of the next line of text
+
+/newline {
+    /posny posny leading sub def    % posny = posny - leading
+    posnx posny                     % put start posn for next line on stack
+    2 copy                          %            ... twice
+    0 0.5 1 setrgbcolor             % set color to light blue
+    fiducial                        % draw a fiducial
+    0 setgray                       % reset the color to black
+    moveto                          % move to position of next line
+} def
+
+/Courier findfont fontheight scalefont setfont
+newline           % move to the next line and print a fiducial
+message show      % pop and print a text string
+
+/Courier-bold findfont fontheight scalefont setfont
+newline message show
+
+/Helvetica findfont fontheight scalefont setfont
+newline message show
+
+/Helvetica-bold findfont fontheight scalefont setfont
+newline message show
+
+showpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Conditionals
+
+true            % boolean true value
+false           % boolean false value
+and             % false
+true or         % true
+not =           % false
+true true xor = % false
+
+% Conditional Expressions
+1 1 eq = % true, equal
+1 1 lt = % false, less than
+1 1 le = % true, less than or equal
+1 1 gt = % false, greater than
+1 1 ge = % true greater than or equal
+1 1 ne = % false, not equal
+
+% If...Then: bool {op1} if
+true { 123 = } if % 123
+
+% If...Then...Else: bool {op1} {op2} ifelse
+false { 123 = } { 456 = } ifelse % 456
+
+% Compute max
+% stack: y x --> max
+/mymax {
+    /x exch def     % y             pop x and bind to name x (x /x exch def -> /x x def)
+    /y exch def     % -             pop y and bind to name y
+    x               % x             put x on the stack
+    y               % x y           put y on the stack
+    gt              % true/false    x > y
+    {x} {y} ifelse  % x/y           if x > y then x else y
+} def
+
+1 42 mymax = % 42
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Loops
+
+% Repeat: num {op} repeat
+
+3 { (Hello) = } repeat % print hello three times
+
+% For: start inc end {op} for
+
+0 1 7 { = } for         % print from 0, 1, ..., 7
+0 1 3 {} for            % put 0, 1, ..., 3 on the stack
+0 1 12 { fac = } for    % compute and print factorial of 0, 1, ..., 12
+
+% Loop: {op} loop
+
+{ 123 = exit } loop % print 123 and exit
+
+% Redefine the for loop
+% stack: start inc end op -> opreturn
+/myfor {
+    /op exch def                        % start inc end             bind op
+    /end exch def                       % start end                 bind end
+    /inc exch def                       % start                     bind inc
+    /counter exch def                   % -                         bind start to counter
+    {
+        counter                         % counter                   put counter on the stack
+        op                              % counter                   call op
+        counter end ge                  % opreturn geresult         counter >= end
+        { exit }                        % opreturn geresult {exit}  exit the loop
+        if                              % opreturn                  if counter >= end then exit
+        /counter counter inc add def    % opreturn                  increase counter
+    } loop
+} def
